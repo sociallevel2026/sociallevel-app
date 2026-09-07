@@ -4,17 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>SocialLevel — Arena de Problemas</title>
-
-<!-- ===== PWA: manifest, ícono y color de marca ===== -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#21295C">
-<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SocialLevel">
-<meta name="mobile-web-app-capable" content="yes">
-
 <style>
   :root{
     --navy:#21295C;
@@ -71,18 +60,28 @@
     background:var(--navy);
     color:var(--white);
     flex-shrink:0;
+    position:relative;
   }
   .topbar-row{
     display:flex;
     align-items:center;
     justify-content:space-between;
+    padding-right:30px;
   }
   .wordmark{
     font-family:var(--font-display);
     font-weight:700;
     font-size:18px;
     letter-spacing:.2px;
+    display:flex;
+    align-items:center;
   }
+  .topbar-right{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
   .level-chip{
     display:flex;
     align-items:center;
@@ -103,17 +102,84 @@
   }
   .level-chip b{ font-weight:700; }
 
-  .conn-badge{
-    font-size:9px;
-    font-weight:700;
-    padding:2px 8px;
-    border-radius:100px;
-    letter-spacing:.3px;
-    display:none;
+  /* LED de conexión a la IA: verde=conectado, amarillo=conectando, rojo=sin conexión */
+  .conn-led{
+    width:8px; height:8px;
+    border-radius:50%;
+    display:inline-block;
+    margin-left:7px;
+    flex-shrink:0;
+    background:var(--muted);
+    box-shadow:0 0 0 2px rgba(255,255,255,.06);
+    transition:background .3s ease, box-shadow .3s ease;
   }
-  .conn-badge.show{ display:inline-block; }
-  .conn-badge.online{ background:rgba(46,125,107,.25); color:#8FE0C4; border:1px solid rgba(46,125,107,.5); }
-  .conn-badge.offline{ background:rgba(185,121,59,.2); color:#FFD9A6; border:1px solid rgba(185,121,59,.4); }
+  .conn-led.connecting{ background:#E8B93B; box-shadow:0 0 6px 1.5px rgba(232,185,59,.75); animation:ledPulse 1s ease-in-out infinite; }
+  .conn-led.online{ background:#3ECF8E; box-shadow:0 0 6px 1.5px rgba(62,207,142,.65); }
+  .conn-led.offline{ background:#E05C5C; box-shadow:0 0 5px 1.5px rgba(224,92,92,.55); }
+  @keyframes ledPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+
+  /* ---------- Cycle bar collapse (envuelve topbar-row + phase-strip) ---------- */
+  .cycle-collapse-btn{
+    position:absolute;
+    top:calc(14px + var(--safe-top));
+    right:50px;
+    width:26px; height:26px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06);
+    color:rgba(255,255,255,.7);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    z-index:3;
+    animation: glowPulseDark 2.4s ease-in-out infinite;
+  }
+  .cycle-collapse-btn svg{ width:11px; height:11px; transition:transform .2s ease; }
+  .topbar.collapsed .cycle-collapse-btn svg{ transform:rotate(180deg); }
+
+  @keyframes glowPulseDark{
+    0%, 100%{ box-shadow:0 0 0 0 rgba(232,185,59,0); }
+    50%{ box-shadow:0 0 0 5px rgba(232,185,59,.3); }
+  }
+
+  .cycle-bar-collapsed{
+    display:none;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--iceblue);
+    padding:4px 6px;
+    padding-right:64px;
+    border-radius:10px;
+    cursor:pointer;
+    min-height:26px;
+  }
+  .topbar.collapsed .cycle-bar-collapsed{
+    display:flex;
+    animation: rowGlowDark 2.4s ease-in-out infinite;
+  }
+  @keyframes rowGlowDark{
+    0%, 100%{ box-shadow:inset 0 0 0 0 rgba(232,185,59,0); background:rgba(255,255,255,0); }
+    50%{ box-shadow:inset 0 0 16px 0 rgba(232,185,59,.22); background:rgba(232,185,59,.06); }
+  }
+  .topbar.collapsed .cycle-bar-detail{ display:none; }
+  .wordmark-mini{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:14px;
+    color:var(--white);
+    flex-shrink:0;
+  }
+  .cycle-mini-sep{ color:rgba(255,255,255,.35); }
+  .cycle-mini-level b, .cycle-mini-cycle{ color:var(--white); }
+  .cycle-mini-level{ flex-shrink:0; }
+  .cycle-mini-cycle{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cycle-mini-timer{
+    margin-left:auto;
+    font-weight:700;
+    color:var(--white);
+    flex-shrink:0;
+    white-space:nowrap;
+  }
 
   /* phase strip */
   .phase-strip{
@@ -163,12 +229,12 @@
   .phase-label-item svg{ width:9px; height:9px; opacity:.85; }
 
   .phase-objective{
-    margin-top:9px;
-    padding-top:9px;
+    margin-top:7px;
+    padding-top:7px;
     border-top:1px solid rgba(255,255,255,.14);
-    font-size:11px;
+    font-size:10.5px;
     color:#D9E7EE;
-    line-height:1.4;
+    line-height:1.35;
   }
 
   /* ---------- Body / tabs ---------- */
@@ -177,13 +243,71 @@
 
   /* Arena tab */
   .problem-card{
-    margin:14px 16px 6px;
+    margin:10px 16px 6px;
     background:var(--white);
     border-radius:16px;
     border:1px solid var(--line);
-    padding:14px 15px;
+    padding:11px 15px;
     flex-shrink:0;
+    position:relative;
+    transition:padding .2s ease;
   }
+  .problem-collapse-btn{
+    position:absolute;
+    top:10px; right:12px;
+    width:22px; height:22px;
+    border-radius:50%;
+    border:none;
+    background:var(--offwhite);
+    color:var(--muted);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    z-index:2;
+    animation: glowPulseLight 2.4s ease-in-out infinite;
+  }
+  .problem-collapse-btn svg{ width:11px; height:11px; transition:transform .2s ease; }
+  .problem-card.collapsed .problem-collapse-btn svg{ transform:rotate(180deg); }
+
+  @keyframes glowPulseLight{
+    0%, 100%{ box-shadow:0 0 0 0 rgba(28,114,147,0); }
+    50%{ box-shadow:0 0 0 5px rgba(28,114,147,.22); }
+  }
+
+  .problem-card.collapsed{
+    padding:10px 40px 10px 15px;
+    animation: cardGlowLight 2.4s ease-in-out infinite;
+  }
+  @keyframes cardGlowLight{
+    0%, 100%{ box-shadow:0 0 0 0 rgba(28,114,147,0); border-color:var(--line); }
+    50%{ box-shadow:0 0 12px 1px rgba(28,114,147,.28); border-color:rgba(28,114,147,.35); }
+  }
+  .problem-card.collapsed .problem-eyebrow,
+  .problem-card.collapsed .problem-brief,
+  .problem-card.collapsed .problem-toggle,
+  .problem-card.collapsed .criteria-row,
+  .problem-card.collapsed .problem-title{ display:none; }
+
+  .problem-collapsed-label{
+    display:none;
+    align-items:center;
+    gap:7px;
+    font-size:11.5px;
+    font-weight:700;
+    letter-spacing:.4px;
+    color:var(--teal);
+    cursor:pointer;
+    border-radius:8px;
+    padding:2px 4px;
+  }
+  .problem-card.collapsed .problem-collapsed-label{
+    display:flex;
+    animation: rowGlowLight 2.4s ease-in-out infinite;
+  }
+  @keyframes rowGlowLight{
+    0%, 100%{ background:rgba(28,114,147,0); }
+    50%{ background:rgba(28,114,147,.08); }
+  }
+  .problem-collapsed-label svg{ width:14px; height:14px; flex-shrink:0; }
   .problem-eyebrow{
     font-size:11px;
     color:var(--teal);
@@ -199,25 +323,16 @@
     color:var(--navy);
     margin:5px 0 4px;
     line-height:1.28;
+    padding-right:26px;
+    transition:font-size .2s ease, margin .2s ease;
   }
   .problem-brief{
     font-size:12.5px;
     color:var(--muted);
     line-height:1.45;
-    max-height:0;
+    max-height:400px;
     overflow:hidden;
-    transition:max-height .25s ease;
-  }
-  .problem-card.expanded .problem-brief{ max-height:220px; }
-  .problem-toggle{
-    margin-top:8px;
-    font-size:12px;
-    color:var(--deepblue);
-    font-weight:600;
-    background:none;
-    border:none;
-    padding:0;
-    cursor:pointer;
+    transition:max-height .3s ease, opacity .25s ease;
   }
   .criteria-row{
     margin-top:10px;
@@ -267,6 +382,7 @@
     padding:2px 7px;
     border-radius:100px;
     letter-spacing:.2px;
+    cursor:pointer;
   }
   .role-generador{ background:#DDEEF2; color:var(--teal); }
   .role-constructor{ background:#DCE9F0; color:var(--deepblue); }
@@ -407,47 +523,6 @@
   .locked-text b{ display:block; font-size:12px; color:var(--darktext); }
   .locked-text span{ font-size:10.8px; color:var(--muted); line-height:1.35; display:block; margin-top:1px; }
 
-  .level-preview-toggle{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:8px;
-    padding:7px 16px;
-    background:#FBF3E9;
-    border-top:1px solid var(--amber-bg);
-    border-bottom:1px solid var(--amber-bg);
-    font-size:10.8px;
-    color:var(--amber);
-    flex-shrink:0;
-  }
-  .level-preview-toggle label{ display:flex; align-items:center; gap:7px; cursor:pointer; font-weight:600; }
-  .level-preview-toggle input{ accent-color:var(--amber); }
-
-  .demo-controls{
-    display:flex;
-    gap:8px;
-    padding:8px 16px 10px;
-    flex-shrink:0;
-  }
-  .demo-btn{
-    flex:1;
-    font-size:11.5px;
-    font-weight:600;
-    padding:8px 10px;
-    border-radius:10px;
-    border:1px solid var(--line);
-    background:var(--white);
-    color:var(--deepblue);
-    cursor:pointer;
-    text-align:center;
-  }
-  .demo-btn.primary{
-    background:var(--navy);
-    color:var(--white);
-    border-color:var(--navy);
-  }
-  .demo-btn:disabled{ opacity:.45; cursor:not-allowed; }
-
   /* ---------- Perfil tab ---------- */
   .perfil-scroll{ flex:1; overflow-y:auto; padding:16px; }
   .level-card{
@@ -490,7 +565,25 @@
     color:var(--navy);
     margin:22px 0 10px;
     font-family:var(--font-display);
+    display:flex;
+    align-items:center;
+    gap:6px;
   }
+  .info-dot{
+    width:16px; height:16px;
+    border-radius:50%;
+    border:1px solid var(--muted);
+    color:var(--muted);
+    font-size:10px;
+    font-weight:700;
+    font-family:var(--font-body);
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .info-dot:active{ background:var(--iceblue); }
   .role-bars{ display:flex; flex-direction:column; gap:9px; }
   .role-bar-row{ display:flex; align-items:center; gap:10px; }
   .role-bar-label{ width:82px; font-size:11.5px; color:var(--darktext); flex-shrink:0; }
@@ -577,7 +670,7 @@
     pointer-events:none;
     z-index:20;
   }
-  .toast.show{ opacity:1; transform:translateY(0); }
+  .toast.show{ opacity:1; transform:translateY(0); pointer-events:auto; cursor:pointer; }
   .toast b{ color:var(--iceblue); }
   .toast-icon{
     width:30px;height:30px;
@@ -589,6 +682,8 @@
   .toast-title{ font-weight:700; font-size:12.5px; margin-bottom:1px; }
   .toast-sub{ font-size:11px; color:rgba(255,255,255,.8); line-height:1.35; }
   .toast.levelup .toast-title{ color:#FFD9A6; }
+  .toast.arena{ background:var(--deepblue); }
+  .toast.arena .toast-title{ color:var(--iceblue); }
 
   /* sheet (level detail) */
   .sheet-backdrop{
@@ -682,7 +777,7 @@
   .score-line.reveal{ animation: scoreIn .3s ease both; }
 
   /* buttons: consistent press feedback for a more crafted feel */
-  .demo-btn, .send-btn, .reply-hint, .navbtn, .problem-toggle{
+  .demo-btn, .send-btn, .reply-hint, .navbtn{
     transition: transform .12s ease, background-color .15s ease, opacity .15s ease;
   }
   .demo-btn:active, .send-btn:active{ transform:scale(.96); }
@@ -910,34 +1005,60 @@
   <div id="app">
 
     <!-- ===== TOP BAR ===== -->
-    <div class="topbar">
-      <div class="topbar-row">
-        <div>
-          <div class="wordmark">SocialLevel</div>
-          <div class="wordmark-sub">Resuelve problemas, no solo converses</div>
-          <span class="conn-badge" id="connBadge"></span>
-        </div>
-        <div class="level-chip" id="levelChip">
-          <span class="dot"></span>
-          Nivel <b id="chipLevel">3</b>
-        </div>
+    <div class="topbar" id="topbar">
+      <button class="cycle-collapse-btn" id="cycleCollapseBtn" title="Contraer / expandir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+
+      <!-- Vista replegada: solo lo esencial -->
+      <div class="cycle-bar-collapsed" id="cycleBarCollapsed">
+        <span class="wordmark-mini" id="wordmarkMini">SocialLevel</span>
+        <span class="conn-led" id="connLedMini" title="Estado de conexión con la IA"></span>
+        <span class="cycle-mini-sep">·</span>
+        <span class="cycle-mini-level">Nivel <b id="chipLevelMini">3</b></span>
+        <span class="cycle-mini-sep">·</span>
+        <span class="cycle-mini-cycle" id="cycleMini">Ciclo #14</span>
+        <span class="cycle-mini-timer" id="phaseTimerMini">32h 00m</span>
       </div>
-      <div class="phase-strip">
-        <div class="phase-strip-top">
-          <span id="cycleLabel">Ciclo #14 · Arena de Problemas</span>
-          <span id="phaseTimer">32h 00m restantes</span>
+
+      <!-- Vista desplegada: detalle completo -->
+      <div class="cycle-bar-detail" id="cycleBarDetail">
+        <div class="topbar-row">
+          <div>
+            <div class="wordmark" id="wordmarkFull">SocialLevel<span class="conn-led" id="connLed" title="Estado de conexión con la IA"></span></div>
+            <div class="wordmark-sub">Resuelve problemas, no solo converses</div>
+          </div>
+          <div class="topbar-right">
+            <div class="level-chip" id="levelChip">
+              <span class="dot"></span>
+              Nivel <b id="chipLevel">3</b>
+            </div>
+          </div>
         </div>
-        <div class="phase-name" id="phaseName">Exploración</div>
-        <div class="phase-track" id="phaseTrack"></div>
-        <div class="phase-labels" id="phaseLabels"></div>
-        <div class="phase-objective" id="phaseObjective"></div>
+        <div class="phase-strip">
+          <div class="phase-strip-top">
+            <span id="cycleLabel">Ciclo #14 · Arena de Problemas</span>
+            <span id="phaseTimer">32h 00m restantes</span>
+          </div>
+          <div class="phase-name" id="phaseName">Exploración</div>
+          <div class="phase-track" id="phaseTrack"></div>
+          <div class="phase-labels" id="phaseLabels"></div>
+          <div class="phase-objective" id="phaseObjective"></div>
+        </div>
       </div>
     </div>
 
     <!-- ===== ARENA TAB ===== -->
     <div class="tabpanel visible" id="tab-arena">
       <div class="problem-card" id="problemCard">
+        <button class="problem-collapse-btn" id="problemCollapseBtn" title="Contraer / expandir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
         <div class="problem-eyebrow">PROBLEMA DEL CICLO</div>
+        <div class="problem-collapsed-label" id="problemCollapsedLabel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          DESPLEGAR PROBLEMA DEL CICLO
+        </div>
         <div class="problem-title" id="problemTitle">Reducir el tiempo de onboarding de 14 a 5 días sin sumar personal</div>
         <div class="problem-brief" id="problemBrief">
           El equipo de operaciones tarda en promedio 14 días en dejar productivo a un cliente nuevo.
@@ -945,7 +1066,6 @@
           sin contratar personal adicional. Se valoran propuestas que consideren automatización,
           documentación y reordenamiento de pasos existentes.
         </div>
-        <button class="problem-toggle" id="problemToggle">Ver contexto completo</button>
         <div class="criteria-row" id="criteriaRow">
           <span class="criteria-pill" data-crit="relevancia">Relevancia</span>
           <span class="criteria-pill" data-crit="originalidad">Originalidad</span>
@@ -956,15 +1076,6 @@
       </div>
 
       <div class="chat-scroll" id="chatScroll"></div>
-
-      <div class="level-preview-toggle">
-        <label><input type="checkbox" id="lowLevelPreview"> Vista previa: simular Nivel 1 (sin cambiar tu progreso real)</label>
-      </div>
-
-      <div class="demo-controls" id="demoControls">
-        <button class="demo-btn" id="btnResetCycle">Reiniciar ciclo</button>
-        <button class="demo-btn primary" id="btnAdvancePhase">Avanzar fase →</button>
-      </div>
 
       <div class="composer-wrap">
         <div class="reply-banner" id="replyBanner">
@@ -1005,7 +1116,7 @@
           <div class="xp-label" id="xpLabel">240 / 600 XP para Nivel 4</div>
         </div>
 
-        <div class="section-title">Perfil de contribución</div>
+        <div class="section-title">Perfil de contribución <span class="info-dot" id="roleInfoBtn">?</span></div>
         <div class="role-bars" id="roleBars"></div>
 
         <div class="section-title">Permisos por nivel</div>
@@ -1046,11 +1157,12 @@
             </div>
             <div class="accordion-body"><div class="accordion-body-inner">
               <table class="mini-table">
-                <tr><td>Apertura</td><td>Hora 0 — se publica el problema y el criterio de éxito.</td></tr>
-                <tr><td>Exploración</td><td>Horas 0–16 — propones ideas y haces preguntas.</td></tr>
-                <tr><td>Construcción</td><td>Horas 16–36 — refinas y combinas las mejores ideas.</td></tr>
-                <tr><td>Cierre</td><td>Horas 36–48 — se resume la solución colectiva.</td></tr>
+                <tr><td>Apertura</td><td>Hora 0 — se publica el problema y el criterio de éxito. Qué hacer: léelo con calma antes de que abra la discusión.</td></tr>
+                <tr><td>Exploración</td><td>Horas 0–16 — Qué hacer: propón ideas diversas y haz preguntas. Aquí se premia la variedad de enfoques, no la cantidad de mensajes.</td></tr>
+                <tr><td>Construcción</td><td>Horas 16–36 — Qué hacer: refina y combina las mejores ideas que ya salieron. Se premia construir sobre lo que dijeron otros, no proponer algo nuevo desde cero.</td></tr>
+                <tr><td>Cierre</td><td>Horas 36–48 — Qué hacer: ayuda a resumir y consolidar la solución colectiva. Se premia la claridad por encima de ideas nuevas.</td></tr>
               </table>
+              <p>Dentro de la app, el recuadro del ciclo muestra un timer que cuenta hasta el próximo cambio de fase — y en la fase de Cierre, ese mismo timer pasa a contar hasta que se cierra la arena.</p>
             </div></div>
           </div>
 
@@ -1087,6 +1199,7 @@
                 <li><b>Sintetizador</b> — resume la discusión.</li>
               </ul>
               <p>Ningún rol vale más que otro — un equipo sano necesita a los cuatro.</p>
+              <p><b>Importante:</b> el rol es solo una descripción de cómo aportaste en <i>ese</i> mensaje — puede cambiar de un mensaje a otro y no desbloquea nada por sí solo. Lo que sí acumula beneficios es tu <b>nivel</b> (siguiente sección).</p>
             </div></div>
           </div>
 
@@ -1106,6 +1219,7 @@
                 <tr><td>Niv. 8–10</td><td>Consejo — dorado</td></tr>
               </table>
               <p>Si una fase requiere un nivel que no tienes, el cuadro de texto se bloquea con una explicación clara — no te deja adivinar.</p>
+              <p><b>Rol vs. Nivel:</b> tu rol describe cómo participaste (cambia todo el tiempo); tu nivel es acumulativo y es lo único que desbloquea permisos. Puedes ser mayormente "Verificador" y aun así estar en Nivel 2, o "Generador" y ya estar en Nivel 8 — son dos cosas independientes.</p>
               <button class="guia-link" id="linkToPerfil">Ver la lista completa de los 11 niveles en Mi progreso →</button>
             </div></div>
           </div>
@@ -1251,11 +1365,16 @@
   ];
 
   var ROLE_META = {
-    generador:    { label:"Generador",    cls:"role-generador" },
-    constructor:  { label:"Constructor",  cls:"role-constructor" },
-    verificador:  { label:"Verificador",  cls:"role-verificador" },
-    sintetizador: { label:"Sintetizador", cls:"role-sintetizador" },
+    generador:    { label:"Generador",    cls:"role-generador",
+      desc:"Propone ideas originales todavía no planteadas en la conversación." },
+    constructor:  { label:"Constructor",  cls:"role-constructor",
+      desc:"Toma una idea de otra persona y la mejora, la combina con otra o la lleva un paso más allá." },
+    verificador:  { label:"Verificador",  cls:"role-verificador",
+      desc:"Cuestiona una idea con datos, ejemplos o razonamiento — pone a prueba lo que se propuso." },
+    sintetizador: { label:"Sintetizador", cls:"role-sintetizador",
+      desc:"Resume el estado de la discusión o conecta varios aportes en una conclusión." },
   };
+  var ROLE_ORDER = ["generador", "constructor", "verificador", "sintetizador"];
 
   // ---------------------------------------------------------------
   // TIERS DE NIVEL — cada tramo tiene su propio color de acento.
@@ -1332,7 +1451,7 @@
   var state = {
     phaseIndex: 1,
     cycleNumber: 14,
-    hoursElapsed: 18,
+    hoursElapsed: 8, // dentro del rango de Exploración (0-16h) para que el cronómetro cuente bien desde el arranque
     messages: [],
     replyTarget: null,
     userXP: 520,
@@ -1342,7 +1461,6 @@
       { title:"Rediseñar el flujo de bienvenida de nuevos usuarios", role:"Generador", score:76, cycle:11 },
       { title:"Reducir tickets duplicados de soporte", role:"Verificador", score:91, cycle:9 },
     ],
-    previewLowLevel: false,
     connected: false,   // true si el backend real respondió al cargar
     cycleId: null,      // id real del ciclo en el backend, cuando está conectado
   };
@@ -1375,7 +1493,7 @@
   // GATING POR NIVEL — la interfaz se adapta según lo que el usuario tiene desbloqueado
   // ---------------------------------------------------------------
   function realLevel(){ return currentLevelInfo(state.userXP).lvl.level; }
-  function effectiveLevel(){ return state.previewLowLevel ? 1 : realLevel(); }
+  function effectiveLevel(){ return realLevel(); }
   function levelInfoByLevel(lvl){
     for (var i=LEVELS.length-1;i>=0;i--){ if (LEVELS[i].level===lvl) return LEVELS[i]; }
     return LEVELS[0];
@@ -1392,14 +1510,9 @@
 
     if (locked){
       var reqInfo = levelInfoByLevel(required);
-      if (state.previewLowLevel){
-        $("lockedTitle").textContent = "Vista previa: así se ve para un usuario de Nivel 1";
-        $("lockedSub").textContent = "Necesita llegar a Nivel " + required + " · " + reqInfo.name + " para participar en " + PHASES[state.phaseIndex] + ".";
-      } else {
-        var faltan = Math.max(0, reqInfo.xp - state.userXP);
-        $("lockedTitle").textContent = "Se desbloquea en Nivel " + required + " · " + reqInfo.name;
-        $("lockedSub").textContent = "Te faltan " + faltan + " XP para participar en la fase de " + PHASES[state.phaseIndex] + ".";
-      }
+      var faltan = Math.max(0, reqInfo.xp - state.userXP);
+      $("lockedTitle").textContent = "Se desbloquea en Nivel " + required + " · " + reqInfo.name;
+      $("lockedSub").textContent = "Te faltan " + faltan + " XP para participar en la fase de " + PHASES[state.phaseIndex] + ".";
     }
 
     renderPhaseLabels();
@@ -1419,13 +1532,59 @@
     });
   }
 
-  $("lowLevelPreview").addEventListener("change", function(e){
-    state.previewLowLevel = e.target.checked;
-    updateComposerGate();
-    showToast(
-      state.previewLowLevel ? "Vista previa activada" : "Vista previa desactivada",
-      state.previewLowLevel ? "Viendo la Arena como un usuario de Nivel 1" : "Volviste a tu nivel real"
-    );
+  // Los controles de "Reiniciar ciclo" / "Avanzar fase" solo se muestran
+  // cuando la app está en modo simulado (sin backend real). Conectada de
+  // verdad, el avance de fase lo controla la empresa desde el panel de
+  // administración — ver connectToBackend() más abajo, donde se decide.
+
+  // ---------------------------------------------------------------
+  // BARRA DE CICLO (topbar + phase-strip) — se repliega/despliega
+  // igual que la tarjeta de problema. Replegada, deja visible solo
+  // lo esencial: nombre, LED de conexión, nivel, ciclo y timer.
+  // ---------------------------------------------------------------
+  function setCycleBarCollapsed(collapsed){
+    $("topbar").classList.toggle("collapsed", collapsed);
+  }
+  $("cycleCollapseBtn").addEventListener("click", function(){
+    setCycleBarCollapsed(!$("topbar").classList.contains("collapsed"));
+  });
+  $("cycleBarCollapsed").addEventListener("click", function(){
+    setCycleBarCollapsed(false);
+  });
+
+  // ---------------------------------------------------------------
+  // TARJETA DEL PROBLEMA — se contrae sola al escribir, para dejarle
+  // más espacio al chat justo cuando el usuario más lo necesita.
+  // También se puede contraer/expandir a mano con el botón de flecha.
+  // ---------------------------------------------------------------
+  function setProblemCardCollapsed(collapsed){
+    $("problemCard").classList.toggle("collapsed", collapsed);
+  }
+  $("problemCollapseBtn").addEventListener("click", function(){
+    setProblemCardCollapsed(!$("problemCard").classList.contains("collapsed"));
+  });
+  $("problemCollapsedLabel").addEventListener("click", function(){
+    setProblemCardCollapsed(false);
+  });
+  composerInput.addEventListener("focus", function(){
+    setProblemCardCollapsed(true);
+  });
+
+  // ---------------------------------------------------------------
+  // TOCAR CUALQUIER PARTE DE LA PANTALLA REPLIEGA LAS BARRAS ABIERTAS
+  // (franja del ciclo y tarjeta del problema), siempre que el toque
+  // haya sido fuera de esa barra — así no se pisa con sus propios
+  // botones de expandir/contraer ni con el resto de sus controles.
+  // ---------------------------------------------------------------
+  $("app").addEventListener("click", function(e){
+    var topbarEl = $("topbar");
+    if (!topbarEl.classList.contains("collapsed") && !e.target.closest("#topbar")){
+      setCycleBarCollapsed(true);
+    }
+    var cardEl = $("problemCard");
+    if (cardEl && !cardEl.classList.contains("collapsed") && !e.target.closest("#problemCard")){
+      setProblemCardCollapsed(true);
+    }
   });
 
   function applyTierStyle(level){
@@ -1440,6 +1599,8 @@
   function renderLevelChip(){
     var info = currentLevelInfo(state.userXP);
     $("chipLevel").textContent = info.lvl.level;
+    var chipLevelMini = $("chipLevelMini");
+    if (chipLevelMini) chipLevelMini.textContent = info.lvl.level;
     $("profLevel").textContent = info.lvl.level;
     $("profLevelName").textContent = info.lvl.name;
     applyTierStyle(info.lvl.level);
@@ -1526,21 +1687,44 @@
       phaseTrack.appendChild(seg);
     }
     phaseName.textContent = PHASES[state.phaseIndex];
-    var remaining = Math.max(0, TOTAL_HOURS - state.hoursElapsed);
-    var h = Math.floor(remaining), m = Math.round((remaining-h)*60);
-    phaseTimer.textContent = h + "h " + (m<10?"0":"") + m + "m restantes";
+    // timer descendiente único: cuenta hasta el próximo cambio de fase, o,
+    // si ya estamos en Cierre, hasta que se cierre la arena (mismo instante).
+    var nextBoundaryHour = b[state.phaseIndex+1];
+    var remainingHours = Math.max(0, nextBoundaryHour - state.hoursElapsed);
+    state.timerEndTimestamp = Date.now() + remainingHours * 3600 * 1000;
+    tickCountdown();
     cycleLabel.textContent = "Ciclo #" + state.cycleNumber + " · Arena de Problemas";
-
-    var advanceBtn = $("btnAdvancePhase");
-    if (state.phaseIndex >= PHASES.length-1){
-      advanceBtn.textContent = "Cerrar ciclo y ver síntesis";
-    } else {
-      advanceBtn.textContent = "Avanzar fase →";
-    }
+    var cycleMini = $("cycleMini");
+    if (cycleMini) cycleMini.textContent = "Ciclo #" + state.cycleNumber;
 
     $("phaseObjective").textContent = PHASE_OBJECTIVE[state.phaseIndex];
     renderCriteriaEmphasis();
     updateComposerGate();
+  }
+
+  // Timer descendiente único: se recalcula cada segundo a partir de
+  // state.timerEndTimestamp, que se fija en renderPhase().
+  function formatCountdown(ms){
+    var totalSeconds = Math.max(0, Math.floor(ms/1000));
+    var h = Math.floor(totalSeconds/3600);
+    var m = Math.floor((totalSeconds%3600)/60);
+    var s = totalSeconds%60;
+    return h + "h " + (m<10?"0":"") + m + "m " + (s<10?"0":"") + s + "s";
+  }
+  function formatCountdownShort(ms){
+    var totalSeconds = Math.max(0, Math.floor(ms/1000));
+    var h = Math.floor(totalSeconds/3600);
+    var m = Math.floor((totalSeconds%3600)/60);
+    return h + "h " + (m<10?"0":"") + m + "m";
+  }
+  function tickCountdown(){
+    if (state.timerEndTimestamp == null) return;
+    var diff = state.timerEndTimestamp - Date.now();
+    var isLastPhase = state.phaseIndex >= PHASES.length-1;
+    var prefix = isLastPhase ? "Arena cierra en " : "Pasa a " + PHASES[state.phaseIndex+1] + " en ";
+    phaseTimer.textContent = prefix + formatCountdown(diff);
+    var mini = $("phaseTimerMini");
+    if (mini) mini.textContent = formatCountdownShort(diff);
   }
 
   function renderCriteriaEmphasis(){
@@ -1564,8 +1748,48 @@
     return "generador";
   }
 
+  function isLowContent(text){
+    var t = text.trim().toLowerCase().replace(/[.,!?¡¿]/g, "");
+    var words = t.split(/\s+/).filter(Boolean);
+
+    // Frases vacías conocidas: si el mensaje ENTERO es esto, no aporta nada
+    var emptyPhrases = [
+      "ok", "okay", "listo", "ya", "vale", "dale",
+      "no se", "no sé", "nose", "no idea", "ni idea",
+      "ja", "jaja", "jajaja", "jajajaja", "jeje", "jejeje", "lol", "xd",
+      "buenos dias", "buenas tardes", "buenas noches",
+      "hola", "hola a todos", "saludos", "buen dia", "buen día",
+      "gracias", "de acuerdo", "entendido", "perfecto", "genial", "bien",
+      "no me interesa", "no interesa", "paso", "no gracias", "nada",
+    ];
+    if (emptyPhrases.indexOf(t) > -1) return true;
+
+    // Mensajes muy cortos (<=4 palabras) sin ningún dato/número, compuestos
+    // solo por saludos o muletillas -> tampoco aportan, aunque no calcen
+    // exacto con la lista de arriba (ej. "buenos dias a todos").
+    if (words.length <= 4 && !/\d|%/.test(t)){
+      var fillerWords = ["buenos","dias","días","buenas","tardes","noches","buen","dia","día",
+        "hola","gracias","ok","okay","listo","ya","vale","dale","no","se","sé","nose",
+        "ja","jaja","jajaja","jajajaja","jeje","jejeje","lol","xd","saludos",
+        "de","acuerdo","entendido","perfecto","genial","bien","a","todos",
+        "interesa","me","paso","nada","y","o","el","la","los","las"];
+      var hasRealContent = words.some(function(w){ return fillerWords.indexOf(w) === -1; });
+      if (!hasRealContent) return true;
+    }
+    return false;
+  }
+
   function scoreMessage(text, hasReply, phaseIndex){
     var w = PHASE_WEIGHTS[phaseIndex] || PHASE_WEIGHTS[1];
+
+    // Igual que la salvaguarda del backend real: si el mensaje no aporta
+    // nada (saludo suelto, "ok", "jaja", "no sé"...), los 5 criterios se
+    // recortan a casi cero, sin excepción — el heurístico local no entiende
+    // contexto como una IA real, pero al menos bloquea los casos obvios.
+    if (isLowContent(text)){
+      return { relevancia:4, originalidad:2, traccion:2, fundamentacion:2, claridad:8, total:4 };
+    }
+
     var len = text.trim().split(/\s+/).length;
     var relevancia = clamp(62 + Math.min(len,40)*0.6, 55, 96);
     var originalidad = clamp(58 + (hasReply?10:20) + (/%|\d/.test(text)?6:0), 50, 95);
@@ -1632,7 +1856,7 @@
       ? '<span class="role-tag" style="background:var(--offwhite);color:var(--muted);border:1px dashed var(--line)">Evaluando…</span>'
       : m.evalError
       ? '<span class="role-tag" style="background:var(--amber-bg);color:var(--amber)">Sin evaluar</span>'
-      : '<span class="role-tag ' + roleMeta.cls + '">' + roleMeta.label + '</span>';
+      : '<span class="role-tag ' + roleMeta.cls + '" data-role="' + m.role + '">' + roleMeta.label + '</span>';
     meta.innerHTML =
       (m.isUser ? "" : '<span class="msg-author">' + m.author + '</span>') +
       roleTagHtml +
@@ -1830,52 +2054,34 @@
   // TOAST
   // ---------------------------------------------------------------
   var toastTimer = null;
-  function showToast(titleHtml, subText, isLevelUp){
+  function showToast(titleHtml, subText, variant){
     var t = $("toast");
+    var isLevelUp = variant === true || variant === "levelup";
+    var isArena = variant === "arena";
     var iconSvg = isLevelUp
       ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2l2.9 6.3 6.9.9-5 4.8 1.2 6.9L12 17.8l-6 3.1 1.2-6.9-5-4.8 6.9-.9L12 2z"/></svg>'
+      : isArena
+      ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
       : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
     t.innerHTML =
       '<div class="toast-icon">' + iconSvg + '</div>' +
       '<div><div class="toast-title">' + titleHtml + '</div>' +
       (subText ? '<div class="toast-sub">' + subText + '</div>' : '') + '</div>';
-    t.classList.toggle("levelup", !!isLevelUp);
+    t.className = "toast" + (isLevelUp ? " levelup" : "") + (isArena ? " arena" : "");
     t.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, isLevelUp ? 4400 : 3200);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, isLevelUp ? 4400 : isArena ? 7000 : 3200);
   }
-
-  // ---------------------------------------------------------------
-  // DEMO CONTROLS — advance phase / reset (simulates the passage of 48h)
-  // ---------------------------------------------------------------
-  $("btnAdvancePhase").addEventListener("click", function(){
-    if (state.phaseIndex < PHASES.length-1){
-      state.phaseIndex++;
-      var b = phaseBoundaries();
-      state.hoursElapsed = b[state.phaseIndex];
-      renderPhase();
-      revealSeedForPhase(state.phaseIndex);
-      showToast("Fase actualizada", PHASES[state.phaseIndex]);
-      if (state.connected && state.cycleId){
-        fetch(API_BASE + "/cycles/" + state.cycleId + "/phase", {
-          method: "PATCH", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phase: INDEX_TO_BACKEND_PHASE[state.phaseIndex] }),
-        }).catch(function(){ /* silencioso: la fase local ya se actualizó igual */ });
-      }
-    } else {
-      closeCycle();
-    }
+  $("toast").addEventListener("click", function(){
+    clearTimeout(toastTimer);
+    $("toast").classList.remove("show");
   });
 
-  $("btnResetCycle").addEventListener("click", function(){
-    state.phaseIndex = 0;
-    state.hoursElapsed = 0;
-    state.messages = [];
-    clearReplyTarget();
-    renderPhase();
-    revealSeedForPhase(0);
-    showToast("Ciclo reiniciado", "Modo demostración");
-  });
+  // Notificación de "arena abierta": avisa que hay un ciclo activo y cuál es el tema.
+  function notifyArenaOpen(){
+    var topic = $("problemTitle") ? $("problemTitle").textContent : "";
+    showToast("La arena está abierta", topic, "arena");
+  }
 
   function revealSeedForPhase(idx){
     // pull in any scripted messages up to current phase not yet added
@@ -1895,37 +2101,10 @@
     renderChat();
   }
 
-  function closeCycle(){
-    var summaryTitle = "Bajar el onboarding de 14 a 5 días";
-    var userMsgs = state.messages.filter(function(m){ return m.isUser; });
-    var avg = userMsgs.length ? Math.round(userMsgs.reduce(function(a,m){return a+m.scores.total;},0)/userMsgs.length) : 70;
-    var dominant = Object.keys(state.roleCounts).reduce(function(a,b){ return state.roleCounts[a]>state.roleCounts[b]?a:b; });
-    state.portfolio.unshift({ title: summaryTitle, role: ROLE_META[dominant].label, score: avg, cycle: state.cycleNumber });
-    renderPortfolio();
-    showToast("Ciclo #" + state.cycleNumber + " cerrado", "Síntesis publicada en tu portafolio");
-
-    if (state.connected && state.cycleId){
-      fetch(API_BASE + "/cycles/" + state.cycleId + "/close", { method: "POST" }).catch(function(){});
-    }
-
-    // start next cycle in demo mode
-    state.cycleNumber++;
-    state.phaseIndex = 0;
-    state.hoursElapsed = 0;
-    state.messages = [];
-    clearReplyTarget();
-    renderPhase();
-    revealSeedForPhase(0);
-  }
-
   // ---------------------------------------------------------------
-  // PROBLEM CARD EXPAND
+  // PROBLEM CARD EXPAND (el texto completo ya se muestra siempre que
+  // la tarjeta no esté replegada, así que este botón queda en desuso)
   // ---------------------------------------------------------------
-  $("problemToggle").addEventListener("click", function(){
-    var card = $("problemCard");
-    var expanded = card.classList.toggle("expanded");
-    $("problemToggle").textContent = expanded ? "Ocultar contexto" : "Ver contexto completo";
-  });
 
   // ---------------------------------------------------------------
   // LEVEL CHIP -> SHEET
@@ -1941,6 +2120,32 @@
     $("sheetBackdrop").classList.add("visible");
   }
   function closeSheet(){ $("sheetBackdrop").classList.remove("visible"); }
+
+  // ---------------------------------------------------------------
+  // ROLE INFO — aclara qué hace cada rol y cómo se detecta,
+  // reutilizando el mismo sheet inferior del chip de nivel.
+  // ---------------------------------------------------------------
+  function openRoleSheet(roleKey){
+    var r = ROLE_META[roleKey] || ROLE_META.generador;
+    $("sheetTitle").textContent = "Rol: " + r.label;
+    $("sheetBody").textContent = r.desc + " Nadie te lo asigna: la IA lo detecta solo, leyendo cómo participaste en ese mensaje.";
+    $("sheetBackdrop").classList.add("visible");
+  }
+  function openRoleLegendSheet(){
+    $("sheetTitle").textContent = "Los 4 roles de SocialLevel";
+    $("sheetBody").innerHTML = ROLE_ORDER.map(function(k){
+      return '<b>' + ROLE_META[k].label + '</b> — ' + ROLE_META[k].desc;
+    }).join('<br><br>') + '<br><br>Se detectan solos según cómo participas — ningún rol vale más que otro, y el rol no desbloquea nada por sí solo (eso lo hace tu nivel).';
+    $("sheetBackdrop").classList.add("visible");
+  }
+  $("chatScroll").addEventListener("click", function(e){
+    var tag = e.target.closest(".role-tag");
+    if (tag && tag.dataset.role) openRoleSheet(tag.dataset.role);
+  });
+  $("roleInfoBtn").addEventListener("click", function(e){
+    e.stopPropagation();
+    openRoleLegendSheet();
+  });
 
   // ---------------------------------------------------------------
   // TABS
@@ -1978,6 +2183,7 @@
   // ---------------------------------------------------------------
   $("welcomeCta").addEventListener("click", function(){
     $("welcomeBackdrop").classList.add("hidden");
+    notifyArenaOpen();
   });
 
   // ---------------------------------------------------------------
@@ -2001,19 +2207,24 @@
   var BACKEND_PHASE_TO_INDEX = { apertura:0, exploracion:1, construccion:2, cierre:3 };
   var INDEX_TO_BACKEND_PHASE = ["apertura", "exploracion", "construccion", "cierre"];
 
-  function setConnBadge(online){
-    var el = $("connBadge");
-    el.classList.add("show");
-    if (online){
-      el.textContent = "● Conectado a DeepSeek";
-      el.className = "conn-badge show online";
-    } else {
-      el.textContent = "○ Modo simulado (sin backend)";
-      el.className = "conn-badge show offline";
-    }
+  // LED junto al nombre "SocialLevel" (y su gemelo en la vista replegada):
+  // verde = conectado a la IA, amarillo = conectando, rojo = sin conexión.
+  function setConnLed(status){
+    state.connStatus = status; // 'connecting' | 'online' | 'offline'
+    var labels = {
+      connecting: "Conectando con la IA…",
+      online: "Conectado a la IA",
+      offline: "Sin conexión a la IA (modo simulado)",
+    };
+    [$("connLed"), $("connLedMini")].forEach(function(el){
+      if (!el) return;
+      el.className = "conn-led " + status;
+      el.title = labels[status] || "";
+    });
   }
 
   function connectToBackend(){
+    setConnLed("connecting");
     fetch(API_BASE + "/cycles/active")
       .then(function(r){ if (!r.ok) throw new Error("sin ciclo activo"); return r.json(); })
       .then(function(cycle){
@@ -2023,7 +2234,7 @@
         state.phaseIndex = BACKEND_PHASE_TO_INDEX[cycle.phase] != null ? BACKEND_PHASE_TO_INDEX[cycle.phase] : 1;
         $("problemTitle").textContent = cycle.title;
         $("problemBrief").textContent = cycle.context + " Criterio de éxito: " + cycle.success_criteria;
-        setConnBadge(true);
+        setConnLed("online");
         renderPhase();
 
         return fetch(API_BASE + "/users/" + DEMO_USER_ID).then(function(r){ return r.json(); });
@@ -2045,7 +2256,7 @@
       })
       .catch(function(){
         state.connected = false;
-        setConnBadge(false);
+        setConnLed("offline");
       });
   }
 
@@ -2060,21 +2271,11 @@
     renderRoleBars();
     renderPortfolio();
     connectToBackend();
+    setInterval(tickCountdown, 1000);
   }
   init();
 
 })();
-
-// ---------------------------------------------------------------
-// PWA: registro del service worker (cascarón offline + instalable)
-// ---------------------------------------------------------------
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function(){
-    navigator.serviceWorker.register("service-worker.js").catch(function(err){
-      console.warn("No se pudo registrar el service worker:", err);
-    });
-  });
-}
 </script>
 </body>
 </html>
