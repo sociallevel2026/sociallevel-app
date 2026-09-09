@@ -3,9 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>SocialLevel — Arena de Problemas</title>
 <style>
   :root{
@@ -1535,10 +1532,9 @@
     });
   }
 
-  // Los controles de "Reiniciar ciclo" / "Avanzar fase" solo se muestran
-  // cuando la app está en modo simulado (sin backend real). Conectada de
-  // verdad, el avance de fase lo controla la empresa desde el panel de
-  // administración — ver connectToBackend() más abajo, donde se decide.
+  // El avance de fase y el cierre de ciclo se controlan desde el panel de
+  // administración (PATCH /cycles/:id/phase y POST /cycles/:id/close) —
+  // no hay controles de eso aquí, a propósito.
 
   // ---------------------------------------------------------------
   // BARRA DE CICLO (topbar + phase-strip) — se repliega/despliega
@@ -2282,3 +2278,4 @@
 </script>
 </body>
 </html>
+
