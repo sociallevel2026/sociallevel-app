@@ -7,7 +7,7 @@
 // Antes usaba "caché primero", lo cual causaba que actualizaciones nuevas
 // del index.html NUNCA se vieran reflejadas para quien ya había visitado
 // la app — quedaba atascado viendo la versión vieja para siempre.
-const CACHE_NAME = "sociallevel-shell-v3"; // <-- subir este número fuerza que se limpie el caché viejo
+const CACHE_NAME = "sociallevel-shell-v4"; // <-- subir este número fuerza que se limpie el caché viejo
 const APP_SHELL = [
   "./manifest.json",
   "./icons/icon-192.png",
