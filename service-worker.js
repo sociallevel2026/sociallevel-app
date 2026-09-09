@@ -2,7 +2,7 @@
 // para que abra rápido y no se rompa por completo sin internet.
 // Los datos reales (mensajes, evaluación) siempre requieren conexión al
 // backend — esto solo evita una pantalla en blanco si la red falla.
-const CACHE_NAME = "sociallevel-shell-v1";
+const CACHE_NAME = "sociallevel-shell-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
