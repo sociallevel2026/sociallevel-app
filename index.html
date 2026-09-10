@@ -1851,11 +1851,15 @@
     var meta = document.createElement("div");
     meta.className = "msg-meta";
     var roleMeta = ROLE_META[m.role] || ROLE_META.generador;
-    var roleTagHtml = m.evaluating
+    var roleTagHtml = m.pending
+      ? '<span class="role-tag" style="background:var(--offwhite);color:var(--muted);border:1px dashed var(--line)">Pendiente</span>'
+      : m.evaluating
       ? '<span class="role-tag" style="background:var(--offwhite);color:var(--muted);border:1px dashed var(--line)">Evaluando…</span>'
       : m.evalError
       ? '<span class="role-tag" style="background:var(--amber-bg);color:var(--amber)">Sin evaluar</span>'
-      : '<span class="role-tag ' + roleMeta.cls + '" data-role="' + m.role + '">' + roleMeta.label + '</span>';
+      : m.role
+      ? '<span class="role-tag ' + roleMeta.cls + '" data-role="' + m.role + '">' + roleMeta.label + '</span>'
+      : "";
     meta.innerHTML =
       (m.isUser ? "" : '<span class="msg-author">' + m.author + '</span>') +
       roleTagHtml +
@@ -1874,7 +1878,12 @@
     bubble.textContent = m.text;
     wrap.appendChild(bubble);
 
-    if (m.evaluating){
+    if (m.pending){
+      var pend = document.createElement("div");
+      pend.className = "evaluating-chip";
+      pend.textContent = "⏳ Se evaluará cuando se cierre este ciclo";
+      wrap.appendChild(pend);
+    } else if (m.evaluating){
       var ev = document.createElement("div");
       ev.className = "evaluating-chip";
       ev.innerHTML = '<span class="evaluating-dots"><span></span><span></span><span></span></span> La IA está evaluando tu aporte…';
@@ -1954,41 +1963,6 @@
     }
   }
 
-  // Sondea /api/messages/:id cada segundo hasta que el backend termine de
-  // evaluar (evaluated_at deja de ser null), o hasta agotar los intentos.
-  function pollBackendMessage(id, msg, attempt){
-    attempt = attempt || 0;
-    fetch(API_BASE + "/messages/" + id)
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        if (data.status === "evaluado"){
-          applyEvaluationResult(msg, data.role, {
-            relevancia: data.relevancia, originalidad: data.originalidad,
-            traccion: data.traccion, fundamentacion: data.fundamentacion,
-            claridad: data.claridad, total: data.total,
-          });
-        } else if (data.status === "error"){
-          msg.evaluating = false;
-          msg.evalError = data.justificacion || "No se pudo evaluar este mensaje.";
-          renderChat();
-          showToast("No se pudo evaluar tu aporte", data.justificacion || "Revisa la clave y el saldo de tu proveedor de IA");
-        } else if (attempt < 15){
-          setTimeout(function(){ pollBackendMessage(id, msg, attempt+1); }, 1000);
-        } else {
-          msg.evaluating = false;
-          msg.evalError = "La evaluación tardó demasiado y se canceló.";
-          renderChat();
-          showToast("La evaluación está tardando más de lo normal", "Revisa que tu clave de DeepSeek tenga saldo");
-        }
-      })
-      .catch(function(){
-        msg.evaluating = false;
-        msg.evalError = "Se perdió la conexión con el backend.";
-        renderChat();
-        showToast("Se perdió la conexión con el backend", "Revisa que node server.js siga corriendo");
-      });
-  }
-
   function trySend(){
     var text = composerInput.value.trim();
     if (!text) return;
@@ -2001,8 +1975,12 @@
       author: "Tú",
       isUser: true,
       text: text,
-      role: "generador",
-      evaluating: true,
+      role: null,
+      // Conectado de verdad: el mensaje queda "pendiente" hasta que se cierre
+      // el ciclo (evaluación por lote). Sin backend (modo simulado): usa el
+      // spinner breve de antes, ya que ahí no hay ningún costo real de IA.
+      pending: !!(state.connected && state.cycleId),
+      evaluating: !(state.connected && state.cycleId),
       replyToText: replyToText,
     };
     addMessage(msg);
@@ -2011,7 +1989,7 @@
     clearReplyTarget();
 
     if (state.connected && state.cycleId){
-      // ---- Camino real: backend + DeepSeek ----
+      // ---- Camino real: se guarda, no se evalúa todavía ----
       fetch(API_BASE + "/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2020,15 +1998,11 @@
         .then(function(r){ return r.json(); })
         .then(function(data){
           msg.backendId = data.id;
-          pollBackendMessage(data.id, msg, 0);
         })
         .catch(function(){
-          showToast("No se pudo conectar al backend", "Usando evaluación simulada para este mensaje");
-          setTimeout(function(){
-            var role = detectRole(text, hasReply);
-            var scores = scoreMessage(text, hasReply, msg.phase);
-            applyEvaluationResult(msg, role, scores);
-          }, 650);
+          msg.pending = false;
+          msg.evalError = "No se pudo guardar — revisa la conexión con el backend.";
+          renderChat();
         });
     } else {
       // ---- Camino simulado: sin backend disponible ----
@@ -2230,11 +2204,33 @@
         state.connected = true;
         state.cycleId = cycle.id;
         state.cycleNumber = cycle.number;
+        state.cycleStatus = cycle.status; // activo | evaluando | cerrado
         state.phaseIndex = BACKEND_PHASE_TO_INDEX[cycle.phase] != null ? BACKEND_PHASE_TO_INDEX[cycle.phase] : 1;
         $("problemTitle").textContent = cycle.title;
         $("problemBrief").textContent = cycle.context + " Criterio de éxito: " + cycle.success_criteria;
         setConnLed("online");
         renderPhase();
+        renderCycleStatusBanner();
+
+        return fetch(API_BASE + "/cycles/" + cycle.id + "/messages").then(function(r){ return r.json(); });
+      })
+      .then(function(mensajes){
+        // Con backend real, el chat muestra los mensajes reales del ciclo —
+        // no los de ejemplo del modo simulado.
+        state.messages = (mensajes || []).map(function(m){
+          return {
+            backendId: m.id,
+            phase: BACKEND_PHASE_TO_INDEX[m.phase] != null ? BACKEND_PHASE_TO_INDEX[m.phase] : 0,
+            author: m.autor, isUser: m.user_id === DEMO_USER_ID, text: m.text,
+            role: m.role, replyToText: null,
+            pending: m.status === "pendiente",
+            evalError: m.status === "error" ? "No se pudo evaluar este mensaje." : null,
+            scores: m.status === "evaluado"
+              ? { relevancia: m.relevancia, originalidad: m.originalidad, traccion: m.traccion, total: m.total }
+              : null,
+          };
+        });
+        renderChat();
 
         return fetch(API_BASE + "/users/" + DEMO_USER_ID).then(function(r){ return r.json(); });
       })
@@ -2259,6 +2255,27 @@
       });
   }
 
+  // Banner discreto explicando en qué estado está el ciclo actual, cuando
+  // no es el estado normal "activo" — para que no parezca que la app se
+  // congeló mientras se espera la evaluación por lote del cierre.
+  function renderCycleStatusBanner(){
+    var existing = document.getElementById("cycleStatusBanner");
+    if (existing) existing.remove();
+    if (state.cycleStatus === "activo" || !state.cycleStatus) return;
+
+    var banner = document.createElement("div");
+    banner.id = "cycleStatusBanner";
+    banner.style.cssText = "margin:8px 16px 0;padding:8px 12px;border-radius:10px;font-size:11px;text-align:center;" +
+      (state.cycleStatus === "evaluando"
+        ? "background:var(--amber-bg);color:var(--amber);"
+        : "background:var(--good-bg, #E3F1E8);color:var(--good, #2E7D6B);");
+    banner.textContent = state.cycleStatus === "evaluando"
+      ? "⏳ Este ciclo se está evaluando — los resultados aparecerán en unos momentos. Recarga para ver el avance."
+      : "✓ Este ciclo ya cerró y fue evaluado. Los resultados quedaron reflejados en el portafolio de cada persona.";
+    var problemCard = document.getElementById("problemCard");
+    problemCard.parentNode.insertBefore(banner, problemCard);
+  }
+
   // ---------------------------------------------------------------
   // INIT
   // ---------------------------------------------------------------
@@ -2278,3 +2295,4 @@
 </script>
 </body>
 </html>
+
