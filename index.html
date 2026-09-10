@@ -1852,7 +1852,7 @@
     meta.className = "msg-meta";
     var roleMeta = ROLE_META[m.role] || ROLE_META.generador;
     var roleTagHtml = m.pending
-      ? '<span class="role-tag" style="background:var(--offwhite);color:var(--muted);border:1px dashed var(--line)">Pendiente</span>'
+      ? "" // sin etiqueta: se ve como un mensaje de chat normal hasta que se evalúe de verdad
       : m.evaluating
       ? '<span class="role-tag" style="background:var(--offwhite);color:var(--muted);border:1px dashed var(--line)">Evaluando…</span>'
       : m.evalError
@@ -1878,12 +1878,11 @@
     bubble.textContent = m.text;
     wrap.appendChild(bubble);
 
-    if (m.pending){
-      var pend = document.createElement("div");
-      pend.className = "evaluating-chip";
-      pend.textContent = "⏳ Se evaluará cuando se cierre este ciclo";
-      wrap.appendChild(pend);
-    } else if (m.evaluating){
+    // Nota: si m.pending es true, no se agrega ningún chip debajo del mensaje
+    // a propósito — se ve exactamente como un chat normal. Solo se rompe ese
+    // silencio si algo realmente falla (m.evalError), porque ahí sí hace
+    // falta avisar que el aporte no quedó guardado.
+    if (m.evaluating){
       var ev = document.createElement("div");
       ev.className = "evaluating-chip";
       ev.innerHTML = '<span class="evaluating-dots"><span></span><span></span><span></span></span> La IA está evaluando tu aporte…';
